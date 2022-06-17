@@ -1,0 +1,86 @@
+{% extends 'admin/change_form.html' %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrahead %}
+{{ block.super }}
+<style type="text/css">
+.dropzone{
+	border: 2px dashed #0087F7;
+	border-radius: 5px;
+}
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-dz" style="width:83%">
+    {% if ordering_url %}
+    <div class="iso-bootstrap">
+        <a href="{{ordering_url}}" class="btn btn-warning btn-sm" style="float: right; margin-bottom: 20px;">Ordernar imagens</a>
+    </div>
+    {% endif %}
+    <h2 class="legend" style="margin: 1em 0 1em 0">Clique no quadro abaixo para enviar as imagens</h2>
+    <form action="{{ url_upload_file }}" id="myDrop" class="dropzone">
+        {% csrf_token %}
+        <div id="mydz" class="fallback">
+            <input name="file" type="file" multiple />
+        </div>
+    </form>
+</div>
+
+<div id="erros_upload" style="display:none">
+    <h2 class="legend" style="color:red">Os seguintes erros foram encontrados no envio dos arquivos:</h2>
+    <div id="erros_msg">
+        <ul>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{{ block.super }}
+<script type="text/javascript">
+
+var arquivos = JSON.parse('{{arquivos|escapejs}}');
+
+
+Dropzone.options.myDrop = {
+    addRemoveLinks: true,
+    dictRemoveFile: 'Remover',
+    dictDefaultMessage: "",
+    maxFilesize: {{maxFilesize}},
+    acceptedFiles: "{{acceptedFiles}}",
+
+    init: function() {
+        this.on("removedfile", function(file) {
+            if(file.delete_url){
+                delete_url = file.delete_url;
+            } else{
+                obj = JSON.parse(file.xhr.responseText);
+                delete_url = obj.delete_url;
+            }
+            $.ajax({url: delete_url});
+        });
+
+        this.on("error", function(file, message) {
+            erro = file.name + ' - ' + message;
+            $("#erros_msg ul").append('<li>'+erro+'</li>');
+            $("#erros_upload").show();
+            $('html, body').animate({
+                scrollTop: ($('#erros_upload').offset().top)
+            },500);
+        });
+
+        var myDropzone = this;
+
+        for (var i = 0; i < arquivos.length; i++) {
+            f = arquivos[i];
+            mockFile = { name: f.name, size: f.size, delete_url: f.delete_url, id: f.id };
+            myDropzone.emit("addedfile", mockFile);
+            myDropzone.emit("thumbnail", mockFile, f.url);
+            myDropzone.emit("complete", mockFile);
+        }
+    }
+  };
+
+</script>
+{% endblock %}

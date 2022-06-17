@@ -1,0 +1,10 @@
+{% extends 'admin/change_form.html' %}
+{% load i18n admin_urls admin_static admin_modify %}
+
+{% block object-tools-items %}  
+  <li>
+    <a href="{% url opts_dz|admin_urlname:'dz_list' original.pk %}">Enviar Fotos</a>
+  </li>
+{{ block.super }}
+
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls admin_static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="{% static 'dropzone/dropzone.min.js' %}"></script>
+<link rel="stylesheet" href="{% static 'dropzone/dropzone.min.css' %}">
+<style type="text/css">
+.dropzone{
+    border: 2px dashed #0087F7;
+    border-radius: 5px;
+}
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts_parent.app_label %}">{{ opts_parent.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url opts_parent|admin_urlname:'changelist' %}">{{ opts_parent.verbose_name_plural|capfirst }}</a>
+&rsaquo; <a href="{% url opts_parent|admin_urlname:'change' parent.pk %}">{{ parent|capfirst }}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+{% block object-tools %}
+    {% if not is_popup %}
+        <ul class="object-tools">
+            {% block object-tools-items %}
+            <li>
+                {% url opts_parent|admin_urlname:'change' parent.pk|admin_urlquote as parent_url %}
+                <a href="{% add_preserved_filters parent_url %}" class="historylink">{{ opts_parent.verbose_name|capfirst }}</a>
+            </li>
+            {% endblock %}
+        </ul>
+    {% endif %}
+{% endblock %}
+{% if not is_popup %}
+<h1><a href="{% url opts_parent|admin_urlname:'change' parent.pk %}">{{ parent|capfirst }}</a></h1>
+{% endif %}
+<form action="{{ url_upload_file }}" id="myDrop" class="dropzone">
+{% csrf_token %}
+  <div id="mydz" class="fallback">
+    <input name="file" type="file" multiple />
+  </div>
+</form>
+<div id="erros_upload" style="display:none">
+    <h2 class="legend" style="color:red">Os seguintes erros foram encontrados no envio dos arquivos:</h2>
+    <div id="erros_msg">
+        <ul>
+        </ul>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+
+{% block footer %}
+{{ block.super }}
+<script type="text/javascript">
+
+var arquivos = JSON.parse('{{arquivos|escapejs}}');
+
+
+Dropzone.options.myDrop = {
+    addRemoveLinks: true,
+    dictRemoveFile: 'Remover',
+    dictDefaultMessage: "",
+    maxFilesize: {{maxFilesize}},
+    acceptedFiles: "{{acceptedFiles}}",
+
+    init: function() {
+        this.on("removedfile", function(file) {
+            if(file.delete_url){
+                delete_url = file.delete_url;
+            } else{
+                obj = JSON.parse(file.xhr.responseText);
+                delete_url = obj.delete_url;
+            }
+            $.ajax({url: delete_url});
+        });
+
+        this.on("error", function(file, message) {
+            erro = file.name + ' - ' + message;
+            $("#erros_msg ul").append('<li>'+erro+'</li>');
+            $("#erros_upload").show();
+            $('html, body').animate({
+                scrollTop: ($('#erros_upload').offset().top)
+            },500);
+        });
+
+        var myDropzone = this;
+
+        for (var i = 0; i < arquivos.length; i++) {
+            f = arquivos[i];
+            mockFile = { name: f.name, size: f.size, delete_url: f.delete_url, id: f.id };
+            myDropzone.emit("addedfile", mockFile);
+            myDropzone.emit("thumbnail", mockFile, f.url);
+            myDropzone.emit("complete", mockFile);
+        }
+    }
+  };
+
+</script>
+{% endblock %}
