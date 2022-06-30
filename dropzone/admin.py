@@ -4,9 +4,11 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
-import json, pdb
+import json
+import pdb
 
 # Register your models here.
+
 
 class DropZoneMixin(object):
     change_form_template = 'dropzone/change_form.html'
@@ -14,7 +16,8 @@ class DropZoneMixin(object):
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         extra_context['opts_dz'] = self.modelDropZone._meta
-        return super(DropZoneMixin, self).change_view(request, object_id,form_url, extra_context=extra_context)
+        return super(DropZoneMixin, self).change_view(request, object_id, form_url, extra_context=extra_context)
+
 
 class DropZoneAdminAbsctract(object):
 
@@ -37,9 +40,8 @@ class DropZoneAdminAbsctract(object):
         return '%s_%s_dz_delete' % (app_name, self.get_model_name())
 
 
-
 class DropZoneAdminMixin(DropZoneAdminAbsctract):
-    maxFilesize = 5 #5MB
+    maxFilesize = 5  # 5MB
     acceptedFiles = "image/*"
     add_form_template = 'admin/change_form.html'
     change_form_template = 'dropzone/upload_mixin.html'
@@ -50,7 +52,7 @@ class DropZoneAdminMixin(DropZoneAdminAbsctract):
             'dropzone/dropzone.min.js',
         )
         css = {
-            'all': ['dropzone/dropzone.min.css',],
+            'all': ['dropzone/dropzone.min.css', ],
         }
 
     def get_urls(self):
@@ -63,16 +65,16 @@ class DropZoneAdminMixin(DropZoneAdminAbsctract):
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        extra_context['url_upload_file'] = reverse('admin:%s' % self.get_dz_upload_name(),args=[object_id, ])
+        extra_context['url_upload_file'] = reverse('admin:%s' % self.get_dz_upload_name(), args=[object_id, ])
         extra_context['arquivos'] = json.dumps(self.get_arquivos(request, object_id), ensure_ascii=False)
         extra_context['maxFilesize'] = self.maxFilesize
         extra_context['acceptedFiles'] = self.acceptedFiles
         if self.ordering_view:
-            extra_context['ordering_url'] = '{}?{}={}'.format(reverse(self.ordering_view), self.ordering_parent_name, object_id)
-        return super(DropZoneAdminMixin, self).change_view(request, object_id,form_url, extra_context=extra_context)
+            extra_context['ordering_url'] = '{}?{}={}'.format(reverse(self.ordering_view), self.dropzone_parent_name, object_id)
+        return super(DropZoneAdminMixin, self).change_view(request, object_id, form_url, extra_context=extra_context)
 
     def get_arquivos(self, request, object_id):
-        kwargs = {self.get_model_name_parent(): object_id}
+        kwargs = {self.dropzone_parent_name: object_id}
         files = self.modelDropZone.objects.filter(**kwargs).all()
         data = []
         for f in files:
@@ -82,7 +84,7 @@ class DropZoneAdminMixin(DropZoneAdminAbsctract):
             except Exception as e:
                 size = 0
             from django_thumbor import generate_url
-            data.append({'id':f.id, 'delete_url':delete_url, 'name':f.filename, 'size':size, 'url':generate_url(f.image.url, width=120, height=120)})
+            data.append({'id': f.id, 'delete_url': delete_url, 'name': f.filename, 'size': size, 'url': generate_url(f.image.url, width=120, height=120)})
         return data
 
     def get_model_name_parent(self):
@@ -90,7 +92,7 @@ class DropZoneAdminMixin(DropZoneAdminAbsctract):
 
     def upload_file(self, request, parent_id):
         parent = self.get_object(request, parent_id)
-        kwargs = {self.get_model_name_parent(): parent}
+        kwargs = {self.dropzone_parent_name: parent_id}
 
         posted_file = request.FILES.get('file')
         f = self.modelDropZone(image=posted_file, **kwargs)
@@ -98,27 +100,25 @@ class DropZoneAdminMixin(DropZoneAdminAbsctract):
 
         if self.ordering_view:
             f.order = f.id
-            f.save(update_fields=['order',])
+            f.save(update_fields=['order', ])
 
         delete_url = reverse('admin:%s' % self.get_dz_delete_name(), args=[parent_id, f.id, ])
-        response = {'id':f.id, 'delete_url': delete_url}
+        response = {'id': f.id, 'delete_url': delete_url}
         return HttpResponse(json.dumps(response), content_type="application/json")
 
     @csrf_exempt
     def delete_file(self, request, parent_id, pk):
         parent = self.get_object(request, parent_id)
-        kwargs = {self.get_model_name_parent(): parent}
+        kwargs = {self.dropzone_parent_name: parent_id}
 
         obj = get_object_or_404(self.modelDropZone, pk=pk, **kwargs)
         obj.delete()
         return HttpResponse('')
 
 
-
-
 class DropZoneAdmin(admin.ModelAdmin):
     title = 'Enviar Fotos'
-    maxFilesize = 5 #5MB
+    maxFilesize = 5  # 5MB
     acceptedFiles = "image/*"
 
     class Media:
@@ -126,10 +126,10 @@ class DropZoneAdmin(admin.ModelAdmin):
             'js/dropzone/dropzone.min.js',
         )
         css = {
-            'all': ['js/dropzone/dropzone.min.css',],
+            'all': ['js/dropzone/dropzone.min.css', ],
         }
 
-    def get_urls(self):        
+    def get_urls(self):
         urls = super(DropZoneAdmin, self).get_urls()
         my_urls = [
             path('upload/<int:parent_id>/', self.upload_files, name=self.get_dz_list_name()),
@@ -165,19 +165,19 @@ class DropZoneAdmin(admin.ModelAdmin):
         if not self.has_upload_permission(request, parent):
             raise PermissionDenied
 
-        url_upload_file = reverse('admin:%s' % self.get_dz_upload_name(),args=[parent_id, ])
+        url_upload_file = reverse('admin:%s' % self.get_dz_upload_name(), args=[parent_id, ])
         arquivos = json.dumps(self.get_arquivos(request, parent), ensure_ascii=False)
 
         c = {
-                'url_upload_file':url_upload_file,
-                'arquivos':arquivos,
-                'title':self.title,
-                'opts_parent': self.modelParent._meta,
-                'parent': parent,
-                'maxFilesize': self.maxFilesize,
-                'acceptedFiles': self.acceptedFiles,
-                'is_popup': request.GET.get('_popup')
-            }
+            'url_upload_file': url_upload_file,
+            'arquivos': arquivos,
+            'title': self.title,
+            'opts_parent': self.modelParent._meta,
+            'parent': parent,
+            'maxFilesize': self.maxFilesize,
+            'acceptedFiles': self.acceptedFiles,
+            'is_popup': request.GET.get('_popup')
+        }
 
         return render(request, 'dropzone/upload.html', c)
 
@@ -192,7 +192,7 @@ class DropZoneAdmin(admin.ModelAdmin):
             except Exception as e:
                 size = 0
             from django_thumbor import generate_url
-            data.append({'id':f.id, 'delete_url':delete_url, 'name':f.filename, 'size':size, 'url':generate_url(f.image.url, width=120, height=120)})
+            data.append({'id': f.id, 'delete_url': delete_url, 'name': f.filename, 'size': size, 'url': generate_url(f.image.url, width=120, height=120)})
         return data
 
     def upload_file(self, request, parent_id):
@@ -203,7 +203,7 @@ class DropZoneAdmin(admin.ModelAdmin):
         f = self.model(image=posted_file, **kwargs)
         f.save()
         delete_url = reverse('admin:%s' % self.get_dz_delete_name(), args=[f.id, ])
-        response = {'id':f.id, 'delete_url': delete_url}
+        response = {'id': f.id, 'delete_url': delete_url}
         return HttpResponse(json.dumps(response), content_type="application/json")
 
     def get_model_parent(self):
